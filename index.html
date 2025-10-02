@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#667eea" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>Inventario Miraflores</title>
+  <style>
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);height:100vh;display:flex;align-items:center;justify-content:center;color:white}
+    .card{background:rgba(255,255,255,0.08);padding:28px;border-radius:12px;text-align:center;backdrop-filter: blur(6px);max-width:420px;width:92%}
+    .logo{font-size:48px;margin-bottom:8px}
+    .title{font-size:20px;margin-bottom:6px}
+    .desc{font-size:14px;opacity:0.95;margin-bottom:18px}
+    .btn{display:inline-block;background:#fff;color:#333;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:bold;margin:6px;cursor:pointer}
+    .muted{color:rgba(255,255,255,0.85);font-size:13px;margin-top:8px}
+    .spinner{border:4px solid rgba(255,255,255,0.25);border-top:4px solid #fff;border-radius:50%;width:36px;height:36px;margin:14px auto 6px;animation:spin 1s linear infinite}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">📱</div>
+    <div class="title">Inventario Miraflores</div>
+    <div class="desc">Abriendo la aplicación. Si no redirige automáticamente, toca "Abrir App".</div>
+    <div class="spinner" id="spinner"></div>
+    <div>
+      <a id="openApp" class="btn">Abrir App</a>
+      <button id="installBtn" class="btn" style="display:none">Instalar App</button>
+    </div>
+    <div class="muted">PWA lista para instalar. Reemplaza el URL del script en /index.html.</div>
+  </div>
+
+<script>
+  // --- CONFIG: reemplaza con tu URL de Apps Script publicada (exec) ---
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPPP5qF3PYoaKx_DH3umjR4Kath4-eecuePIxYc-iYvG6zauQgaMS0I8DVN-r-PWaClg/exec"; // <-- REEMPLAZA AQUI con tu URL /exec
+  // ------------------------------------------------------------------
+
+  // redirect to the Apps Script exec after checking connectivity
+  async function redirectToApp() { 
+    try {
+      const res = await fetch(SCRIPT_URL + '?accion=obtener_estadisticas', { method: 'GET', cache: 'no-store' });
+      if (res.ok) {
+        window.location.href = SCRIPT_URL;
+      } else {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('openApp').textContent = 'Abrir App (sin conexión)';
+        document.getElementById('openApp').onclick = () => window.location.href = SCRIPT_URL;
+      }
+    } catch (err) {
+      console.warn('Redirect check failed', err);
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('openApp').onclick = () => window.location.href = SCRIPT_URL;
+    }
+  }
+
+  // PWA install prompt handling
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBtn').style.display = 'inline-block';
+  });
+
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    if (choice.outcome === 'accepted') {
+      document.getElementById('installBtn').textContent = 'Instalada ✅';
+      document.getElementById('installBtn').disabled = true;
+    }
+    deferredPrompt = null;
+  });
+
+  // register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js').then(() => console.log('SW registrado')).catch(err => console.warn('SW error', err));
+  }
+
+  document.getElementById('openApp').addEventListener('click', () => window.location.href = SCRIPT_URL);
+
+  // attempt redirect after 1.2s
+  setTimeout(redirectToApp, 1200);
+</script>
+</body>
+</html>
